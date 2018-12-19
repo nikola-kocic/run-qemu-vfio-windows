@@ -130,6 +130,10 @@ fn run_app(e: &mut Executor, root_dir: &Path) -> Result<(), String> {
 }
 
 fn main() {
+    ctrlc::set_handler(move || {
+        println!("Invoking handler for Ctrl-C...");
+    }).expect("Error setting Ctrl-C handler");
+
     let root_dir = Path::new("/mnt/f/virtual-machines/win-ssd-partition/");
     let mut e = Executor::new();
 
