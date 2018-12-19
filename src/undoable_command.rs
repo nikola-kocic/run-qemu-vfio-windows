@@ -58,6 +58,7 @@ impl Executor {
     }
 
     pub fn undo_all(&mut self) {
+        println!("Called undo_all");
         // last executed command should be first undoed
         while let Some(mut cmd) = self.cmds_executed.pop() {
             println!("Called undo for {:?}", cmd.run_cmd);
@@ -68,11 +69,5 @@ impl Executor {
                 }
             };
         }
-    }
-}
-
-impl Drop for Executor {
-    fn drop(&mut self) {
-        self.undo_all();
     }
 }

@@ -12,8 +12,7 @@ const _DATA_DISK_DEV: &str = "/dev/disk/by-id/wwn-0x50014ee2b29ae315"; // /dev/s
 
 const USB_DEV1: &str = "09:00.0";
 
-fn run_app(root_dir: &Path) -> Result<(), String> {
-    let mut e = Executor::new();
+fn run_app(e: &mut Executor, root_dir: &Path) -> Result<(), String> {
     if Path::new(RAID_DEV).exists() {
         return Err("Raid already active".to_string());
     }
@@ -132,12 +131,17 @@ fn run_app(root_dir: &Path) -> Result<(), String> {
 
 fn main() {
     let root_dir = Path::new("/mnt/f/virtual-machines/win-ssd-partition/");
+    let mut e = Executor::new();
 
-    ::std::process::exit(match run_app(root_dir) {
+    let exit_code = match run_app(&mut e, root_dir) {
         Ok(_) => 0,
         Err(status) => {
             eprintln!("Command exited with: {}", status);
             1
         }
-    });
+    };
+
+    e.undo_all();
+
+    ::std::process::exit(exit_code);
 }
