@@ -1,6 +1,6 @@
 use std::process::Command;
 
-pub struct UndoableCommand {
+struct UndoableCommand {
     run_cmd: Command,
     undo_cmd: Command,
     cmd_executed: bool,
@@ -18,10 +18,10 @@ pub fn verbose_execute_cmd(cmd: &mut Command) -> Result<String, String> {
     if !stderr.is_empty() {
         println!("  stderr: {}", stderr);
     }
-    if !output.status.success() {
-        Err(output.status.to_string())
-    } else {
+    if output.status.success() {
         Ok(stdout)
+    } else {
+        Err(output.status.to_string())
     }
 }
 
@@ -37,8 +37,8 @@ where
 }
 
 impl UndoableCommand {
-    pub fn new(run_cmd: Command, undo_cmd: Command) -> UndoableCommand {
-        UndoableCommand {
+    pub fn new(run_cmd: Command, undo_cmd: Command) -> Self {
+        Self {
             run_cmd,
             undo_cmd,
             cmd_executed: false,
@@ -77,13 +77,14 @@ pub struct Executor {
 }
 
 impl Executor {
-    pub fn new() -> Executor {
-        Executor {
+    pub fn new() -> Self {
+        Self {
             cmds_executed: Vec::new(),
         }
     }
 
-    pub fn run(&mut self, mut cmd: UndoableCommand) -> Result<String, String> {
+    pub fn run(&mut self, run_cmd: Command, undo_cmd: Command) -> Result<String, String> {
+        let mut cmd = UndoableCommand::new(run_cmd, undo_cmd);
         cmd.run().map(|v| {
             self.cmds_executed.push(cmd);
             v
