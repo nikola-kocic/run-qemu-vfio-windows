@@ -1,14 +1,22 @@
 mod undoable_command;
 
-use crate::undoable_command::UndoableCommand;
-use std::process::Command;
+use crate::undoable_command::{new_cmd, Executor, UndoableCommand};
 
 fn run_app() -> Result<(), std::process::ExitStatus> {
-    UndoableCommand::new(
-        Command::new("/bin/touch").arg("/tmp/file.txt"),
-        Command::new("/bin/rm").arg("/tmp/file.txt"),
-    )
-    .run()?;
+    let mut e = Executor::new();
+
+    e.run(UndoableCommand::new(
+        new_cmd("/bin/touch", &["/tmp/file1.txt"]),
+        new_cmd("/bin/rm", &["/tmp/file1.txt"]),
+    ))?;
+    e.run(UndoableCommand::new(
+        new_cmd("/bin/touch", &["/tmp/file2.txt"]),
+        new_cmd("/bin/rm", &["/tmp/file2.txt"]),
+    ))?;
+    e.run(UndoableCommand::new(
+        new_cmd("/bin/touch", &["/nntmp/file3.txt"]),
+        new_cmd("/bin/rm", &["/tmp/file3.txt"]),
+    ))?;
 
     Ok(())
 }
