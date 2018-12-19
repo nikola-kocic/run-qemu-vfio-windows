@@ -1,15 +1,11 @@
-use std::process::Command;
-
-struct UndoableCommand {
-    run_cmd: Command,
-    undo_cmd: Command,
-    cmd_executed: bool,
-    undo_executed: bool,
-}
+use std::process::{Child, Command};
 
 pub fn verbose_execute_cmd(cmd: &mut Command) -> Result<String, String> {
     println!("running: {:?}", cmd);
-    let output = cmd.output().unwrap();
+    let output = cmd.output().map_err(|e| {
+        eprintln!("!!! Error running command");
+        e.to_string()
+    })?;
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if !stdout.is_empty() {
         println!("  stdout: {}", stdout);
@@ -21,6 +17,7 @@ pub fn verbose_execute_cmd(cmd: &mut Command) -> Result<String, String> {
     if output.status.success() {
         Ok(stdout)
     } else {
+        eprintln!("!!! Error running command");
         Err(output.status.to_string())
     }
 }
@@ -36,40 +33,9 @@ where
     cmd
 }
 
-impl UndoableCommand {
-    pub fn new(run_cmd: Command, undo_cmd: Command) -> Self {
-        Self {
-            run_cmd,
-            undo_cmd,
-            cmd_executed: false,
-            undo_executed: false,
-        }
-    }
-
-    pub fn run(&mut self) -> Result<String, String> {
-        verbose_execute_cmd(&mut self.run_cmd).map(|v| {
-            self.cmd_executed = true;
-            v
-        })
-    }
-
-    pub fn undo(&mut self) -> Result<String, String> {
-        println!("Called undo for {:?}", self.run_cmd);
-        if self.undo_executed {
-            eprintln!(
-                "!!! Undo command already executed, skipping: {:?}",
-                self.undo_cmd
-            );
-            Ok(String::new())
-        } else if self.cmd_executed {
-            verbose_execute_cmd(&mut self.undo_cmd).map(|v| {
-                self.undo_executed = true;
-                v
-            })
-        } else {
-            Ok(String::new())
-        }
-    }
+struct UndoableCommand {
+    run_cmd: Command,
+    undo_cmd: Command,
 }
 
 pub struct Executor {
@@ -84,8 +50,8 @@ impl Executor {
     }
 
     pub fn run(&mut self, run_cmd: Command, undo_cmd: Command) -> Result<String, String> {
-        let mut cmd = UndoableCommand::new(run_cmd, undo_cmd);
-        cmd.run().map(|v| {
+        let mut cmd = UndoableCommand { run_cmd, undo_cmd };
+        verbose_execute_cmd(&mut cmd.run_cmd).map(|v| {
             self.cmds_executed.push(cmd);
             v
         })
@@ -94,7 +60,8 @@ impl Executor {
     pub fn undo_all(&mut self) {
         // last executed command should be first undoed
         while let Some(mut cmd) = self.cmds_executed.pop() {
-            match cmd.undo() {
+            println!("Called undo for {:?}", cmd.run_cmd);
+            match verbose_execute_cmd(&mut cmd.undo_cmd) {
                 Ok(_) => {}
                 Err(e) => {
                     eprintln!("!!! Undo command exited with: {}", e);
